@@ -574,10 +574,10 @@ class Process
         $total = (new Database())->processQuery("SELECT count(*) as `count` FROM services  ORDER BY service_created_at DESC", []);
 
         if (is_null($search) || $search == ''){
-            $services = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ?  ORDER BY service_created_at DESC", [0]);
+            $services = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ? or service_status = ? ORDER BY service_created_at DESC", [0, 1]);
         }else {
             $search = "%{$search}%";
-            $services = (new Database())->processQuery("SELECT * FROM services WHERE service_title like ? and service_status = ?  ORDER BY service_created_at DESC", [$search, 0]);
+            $services = (new Database())->processQuery("SELECT * FROM services WHERE service_title like ? and service_status = ? or  service_status = ? ORDER BY service_created_at DESC", [$search, 0, 1]);
         }
         return Utilities::response(true, null, ['services' => $services, 'count' => isset($total) && count(['count']) > 0? reset($total)['count'] : 0]);
     }
@@ -586,17 +586,24 @@ class Process
     {
         $prod_name = Utilities::fetchRequiredDataFromArray($_POST, 'prod_name');
         $prod_price = Utilities::fetchRequiredDataFromArray($_POST, 'prod_price');
+        $prod_quantity = Utilities::fetchDataFromArray($_POST, 'prod_quantity');
         $prod_image = Utilities::imageDataUploader(Utilities::fetchRequiredDataFromArray($_POST, 'prod_image'));
         $currentData = Utilities::getCurrentDate();
         if ($prod_image['status']===false)
         {
             return Utilities::response(false, $prod_image['error'], null);
+        }else{
+            if ($prod_quantity == 0){
+                $status = 1;
+            }else{
+                $status = 0;
+            }
+            $output = (new Database())->processQuery("INSERT INTO products (product_name, product_price, product_quantity, product_status, product_image, product_created_at) VALUES (?,?,?,?,?,?)", [$prod_name, $prod_price, $prod_quantity, $status, $prod_image['content']['path'], $currentData]);
         }
-
-        $output = (new Database())->processQuery("INSERT INTO products (product_name, product_price, product_image, product_created_at) VALUES (?,?,?,?)", [$prod_name, $prod_price, $prod_image['content']['path'], $currentData]);
 
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);       
     }
+
 
     public static function getProductList()
     {
@@ -607,10 +614,10 @@ class Process
         $total = (new Database())->processQuery("SELECT COUNT(*) as `count` FROM products  ORDER BY product_created_at DESC", []);
 
         if (is_null($search) || $search == ''){
-            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_status = ? ORDER BY product_created_at DESC", [0]);
+            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_status = ? or product_status = ? ORDER BY product_created_at DESC", [0, 1]);
         }else {
             $search = "%{$search}%";
-            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_name like ? and product_status = ? ORDER BY product_created_at DESC", [$search, 0]);
+            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_name like ? and product_status = ? or product_status = ? ORDER BY product_created_at DESC", [$search, 0,1]);
         }
         return Utilities::response(true, null, ["products" => $products, 'count' => isset($total) && count(['count']) > 0? reset($total)['count'] : 0]);
     }
@@ -620,11 +627,11 @@ class Process
         $serv_id = Utilities::fetchRequiredDataFromArray($_POST, 'serviceId');
         $serv_name = Utilities::fetchRequiredDataFromArray($_POST, 'serviceName');
         $serv_price = Utilities::fetchRequiredDataFromArray($_POST, 'servicePrice');
-        // $serv_image = Utilities::checkImage($_FILES, 'serviceImage');
+        $serv_status = Utilities::fetchDataFromArray($_POST, 'serviceStatus');
         $serv_description = Utilities::fetchRequiredDataFromArray($_POST, 'serviceDescription');
         $currentData = Utilities::getCurrentDate();
 
-        $output = (new Database())->processQuery("UPDATE services SET service_title = ?, service_description = ?, service_price = ?, service_updated_at = ? WHERE service_id = ?", [$serv_name, $serv_description, $serv_price, $currentData, $serv_id]);
+        $output = (new Database())->processQuery("UPDATE services SET service_title = ?, service_description = ?, service_price = ?, service_status = ?, service_updated_at = ? WHERE service_id = ?", [$serv_name, $serv_description, $serv_price, $serv_status, $currentData, $serv_id]);
 
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
@@ -636,7 +643,7 @@ class Process
 
         if (!empty($service)) {
             // $output = (new Database())->processQuery("DELETE FROM services WHERE service_id = ?", [$serv_id]);
-            $output = (new Database())->processQuery("UPDATE services set service_status = 1 WHERE service_id = ?", [$serv_id]);
+            $output = (new Database())->processQuery("UPDATE services set service_status = ? WHERE service_id = ?", [2,$serv_id]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         } else {
@@ -657,11 +664,16 @@ class Process
         $pId = Utilities::fetchRequiredDataFromArray($_POST, 'pId');
         $pName = Utilities::fetchRequiredDataFromArray($_POST, 'pName');
         $pPrice = Utilities::fetchRequiredDataFromArray($_POST, 'pPrice');
-        // $pImage = Utilities::fetchRequiredDataFromArray($_POST, 'pImage');
+        $pQuant = Utilities::fetchDataFromArray($_POST, 'pQuant');
+
         $currentData = Utilities::getCurrentDate();
-
-        $output = (new Database())->processQuery("UPDATE products SET product_name = ?, product_price = ?, product_updated_at = ? WHERE product_id = ?", [$pName, $pPrice, $currentData, $pId]);
-
+        if ($pQuant == 0){
+            $status = 1;
+        }else{
+            $status = 0;
+        }
+        $output = (new Database())->processQuery("UPDATE products SET product_name = ?, product_price = ?, product_status = ?, product_quantity = ?, product_updated_at = ? WHERE product_id = ?", [$pName, $pPrice, $status, $pQuant, $currentData, $pId]);
+        
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
 
@@ -672,7 +684,7 @@ class Process
 
         if (!empty($product)) {
             // $output = (new Database())->processQuery("DELETE FROM products WHERE product_id = ?", [$pId]);
-            $output = (new Database())->processQuery("UPDATE products set product_status = 1 WHERE product_id = ?", [$pId]);
+            $output = (new Database())->processQuery("UPDATE products set product_status = ? WHERE product_id = ?", [2, $pId]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         } else {
@@ -763,14 +775,14 @@ class Process
     // =========================================
     public static function getServices()
     {
-        $gservices = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ?", [0]);
+        $gservices = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ? or service_status = ?", [0,1]);
 
         return Utilities::response(true, null, $gservices);
     }
     
     public static function getProducts()
     {
-        $pproducts = (new Database())->processQuery("SELECT * FROM products  WHERE product_status = ?", [0]);
+        $pproducts = (new Database())->processQuery("SELECT * FROM products  WHERE product_status = ? or product_status = ?", [0,1]);
         
         return Utilities::response(true, null, $pproducts);
     }
