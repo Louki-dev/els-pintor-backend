@@ -52,6 +52,11 @@ class Dashboard
         return Process::updateCustomer();
     }
 
+    public function actionTurndownCustomer()
+    {
+        return Process::turndownCustomer();
+    }
+
     public function actionUpdateCustomerDates()
     {
         return Process::updateCustomerDates();
@@ -254,5 +259,10 @@ class Dashboard
     public function actionCheckDate()
     {
         return Process::checkDate();
+    }
+
+    public function actionContractDate()
+    {
+        return Process::checkContractDate();
     }
 }

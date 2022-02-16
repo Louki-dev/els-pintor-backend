@@ -48,7 +48,7 @@ class GlobeLabs {
             ]);
         }
 
-        Process::updateEmployeeStatus($subscriberNumber, 1);
+        Process::updateEmployeeStatus($subscriberNumber, 1, 0);
 
         if (!empty($optIn['response']) && $optIn['response'] == Defaults::SUCCESS) {
             return Utilities::response(true, null, null);
@@ -77,7 +77,7 @@ class GlobeLabs {
             $accessToken
         ]);
 
-        Process::updateEmployeeStatus($subscriberNumber, 0);
+        Process::updateEmployeeStatus($subscriberNumber, 0, 4);
 
         if (!empty($optOut['response']) && $optOut['response'] == Defaults::SUCCESS) {
             return Utilities::response(true, null, null);

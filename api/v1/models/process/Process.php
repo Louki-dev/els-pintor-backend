@@ -71,12 +71,24 @@ class Process
     {
         $customerId = Utilities::fetchRequiredDataFromArray($_POST, 'customer_id');
         $status = Utilities::fetchRequiredDataFromArray($_POST, 'status');
-        // $assignEmp = Utilities::fetchRequiredDataFromArray($_POST, 'assignEmp'); 
+        // $assignEmp = Utilities::fetchDataFromArray($_POST, 'assignEmp'); 
 
         $currentData = Utilities::getCurrentDate();
         
         $customer = (new Database())->processQuery("UPDATE customer SET customer_status = ?, customer_updated_at = ? WHERE customer_id = ?", [$status, $currentData, $customerId]);
         // $employee = (new Database())->processQuery("UPDATE employee SET emp_work_status = ? WHERE emp_id = ?", [1, $assignEmp]);
+        return Utilities::response(((!empty($customer['response']) && $customer['response'] == Defaults::SUCCESS) ? true : false), null, null);
+    }
+
+    public static function turndownCustomer()
+    {
+        $customerId = Utilities::fetchRequiredDataFromArray($_POST, 'customer_id');
+        $status = Utilities::fetchRequiredDataFromArray($_POST, 'status');
+        $assignEmp = Utilities::fetchDataFromArray($_POST, 'assignEmp'); 
+        $currentData = Utilities::getCurrentDate();
+        
+        $customer = (new Database())->processQuery("UPDATE customer SET customer_status = ?, customer_updated_at = ? WHERE customer_id = ?", [$status, $currentData, $customerId]);
+        $employee = (new Database())->processQuery("UPDATE employee SET emp_work_status = ? WHERE emp_id = ?", [0, $assignEmp]);
         return Utilities::response(((!empty($customer['response']) && $customer['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
 
@@ -126,6 +138,7 @@ class Process
 
         $params = "(".str_repeat('?,', count($numbers) - 1).'?)';       
         $checkEmployee = (new Database())->processQuery("SELECT * FROM `employee` INNER JOIN  `opt_in` on `opt_in_mobile_number` = `emp_mobile_number` WHERE `emp_status` = 1 and `opt_in_mobile_number` in $params", $numbers);
+        $checkEmployee2 = (new Database())->processQuery("SELECT * FROM `employee` WHERE `emp_status` = 1 and `emp_mobile_number` in $params", $numbers);
 
         if (!empty($checkEmployee)) {
             $insertMessage = (new Database())->processQuery("INSERT INTO `message` (message_content, message_created_at, message_is_sent) VALUES (?,?,?)", [$message, $currentData, 1]);
@@ -136,13 +149,19 @@ class Process
                     
                     $mn = $employee['opt_in_mobile_number'];
                     $tkn = $employee['opt_in_token'];
-                    $emp = $employee['emp_id'];
 
                     (new Database())->processQuery("INSERT INTO `sent_message` (sent_message_message, sent_message_mobile, sent_created_at) VALUES (?, ?, ?)", [$insertMessage['last_inserted_id'], $mn, $currentData]);
-                    (new Database())->processQuery("UPDATE `employee` SET emp_work_status = ? WHERE emp_mobile_number = ? ", [1, $mn]);
-                    (new Database())->processQuery("UPDATE `customer` SET customer_employee = ? WHERE customer_id = ? ", [$emp, $customerId]);
                     // $output[] = GlobeLabs::sendSms($mn, $tkn, $message);
                 }
+            }
+        }
+
+        if (!empty($checkEmployee2)) {
+            foreach ($checkEmployee2 as $employee2) {
+                $emp2 = $employee2['emp_id'];   
+                $mn2 = $employee2['emp_mobile_number'];  
+                (new Database())->processQuery("UPDATE `employee` SET emp_work_status = ? WHERE emp_mobile_number = ? ", [1, $mn2]);
+                (new Database())->processQuery("UPDATE `customer` SET customer_employee = ? WHERE customer_id = ? ", [$emp2, $customerId]);     
             }
         }
 
@@ -240,7 +259,7 @@ class Process
         // return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         
         if (empty($employees)) {
-            $output = (new Database())->processQuery("INSERT INTO employee (emp_first_name, emp_last_name, emp_mobile_number, emp_email, emp_created_at) VALUES (?,?,?,?,?)", [$fname, $lname, $mobile, $email, $currentData]);
+            $output = (new Database())->processQuery("INSERT INTO employee (emp_first_name, emp_last_name, emp_mobile_number, emp_email, emp_created_at, emp_work_status) VALUES (?,?,?,?,?,?)", [$fname, $lname, $mobile, $email, $currentData,4]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         }else{
@@ -286,10 +305,10 @@ class Process
         // return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
 
-    public static function updateEmployeeStatus($mobileNumber, $status)
+    public static function updateEmployeeStatus($mobileNumber, $status, $work_status)
     {
         $currentData = Utilities::getCurrentDate();
-        $output = (new Database())->processQuery("UPDATE employee SET emp_status = ?, emp_updated_at = ? WHERE emp_mobile_number = ?", [$status, $currentData, $mobileNumber]);
+        $output = (new Database())->processQuery("UPDATE employee SET emp_status = ?, emp_work_status = ?, emp_updated_at = ? WHERE emp_mobile_number = ?", [$status, $work_status, $currentData, $mobileNumber]);
         return ((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false);
     }
 
@@ -845,7 +864,26 @@ class Process
         }
 
         
+        
         return Utilities::response(true, null, null);
+ 
+    }
+
+    public static function checkContractDate()
+    {
+        $updated = strtotime(Utilities::fetchDataFromArray($_GET, 'updated'));
+        $currentdate = strtotime(Utilities::getCurrentDate());
+
+        if($updated == false){
+            return Utilities::response(false, "Contract is not yet created. To continue, you must first create a contract.", "");
+        }
+        if ($currentdate > $updated){
+            return Utilities::response(false, "The agreement has already begun. To continue, you must update the contract.", "");
+        }
+        else{
+            return Utilities::response(true, null, null);
+        }
+
  
     }
 }
