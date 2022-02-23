@@ -17,8 +17,8 @@ class Dashboard
         
         foreach ($headers as $key => $valueHeader) {
             // $authorization = $key == 'Authorization' ? 'Authorization' : 'authorization';
-            $uid = $key == 'Userid' ? 'Userid' : 'userid';
-            // $uid = $key == 'userid' ? 'userid' : 'Userid';
+            $uid = $key == 'Userid' ? 'Userid' : 'userid'; //for hostinger
+            // $uid = $key == 'userid' ? 'userid' : 'Userid'; //for localhost
 
         }
                 

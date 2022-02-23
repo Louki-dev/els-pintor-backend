@@ -573,13 +573,14 @@ class Process
         $serv_price = Utilities::fetchRequiredDataFromArray($_POST, 'serv_price');
         $serv_description = Utilities::fetchRequiredDataFromArray($_POST, 'serv_description');
         $serv_image = Utilities::imageDataUploader(Utilities::fetchRequiredDataFromArray($_POST, 'serv_image'));
+        $serv_symbol = Utilities::fetchRequiredDataFromArray($_POST, 'serv_symbol');
         $currentData = Utilities::getCurrentDate();
         if ($serv_image['status']===false)
         {
             return Utilities::response(false, $serv_image['error'], null);
         }
 
-        $output = (new Database())->processQuery("INSERT INTO services (service_title, service_price, service_description, service_image, service_created_at) VALUES (?,?,?,?,?)", [$serv_name, $serv_price, $serv_description, $serv_image['content']['path'], $currentData]);
+        $output = (new Database())->processQuery("INSERT INTO services (service_title, service_price, service_description, service_image, service_symbol, service_created_at) VALUES (?,?,?,?,?,?)", [$serv_name, $serv_price, $serv_description, $serv_image['content']['path'], $serv_symbol, $currentData]);
 
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
@@ -648,9 +649,10 @@ class Process
         $serv_price = Utilities::fetchRequiredDataFromArray($_POST, 'servicePrice');
         $serv_status = Utilities::fetchDataFromArray($_POST, 'serviceStatus');
         $serv_description = Utilities::fetchRequiredDataFromArray($_POST, 'serviceDescription');
+        $serv_symbol = Utilities::fetchRequiredDataFromArray($_POST, 'serviceSymbol');
         $currentData = Utilities::getCurrentDate();
 
-        $output = (new Database())->processQuery("UPDATE services SET service_title = ?, service_description = ?, service_price = ?, service_status = ?, service_updated_at = ? WHERE service_id = ?", [$serv_name, $serv_description, $serv_price, $serv_status, $currentData, $serv_id]);
+        $output = (new Database())->processQuery("UPDATE services SET service_title = ?, service_description = ?, service_price = ?, service_status = ?, service_symbol = ?, service_updated_at = ? WHERE service_id = ?", [$serv_name, $serv_description, $serv_price, $serv_status, $serv_symbol, $currentData, $serv_id]);
 
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
@@ -726,6 +728,7 @@ class Process
         $user_ID = Utilities::fetchRequiredDataFromArray($_POST, 'user_ID');
         $user_username = Utilities::fetchRequiredDataFromArray($_POST, 'user_username');
         $user_email = Utilities::fetchRequiredDataFromArray($_POST, 'user_email');
+        $user_number = substr(preg_replace( '/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'user_number')), -10, 10);
         $user = md5(Utilities::fetchRequiredDataFromArray($_POST, 'check_pass'));
         $newpass = Utilities::fetchDataFromArray($_POST, 'new_pass');
         $confirmpass = Utilities::fetchDataFromArray($_POST, 'pass_word');
@@ -733,9 +736,14 @@ class Process
         $check = (new Database())->processQuery("SELECT * FROM users WHERE user_password = ?", [$user]);
         $count = strlen(Utilities::fetchDataFromArray($_POST, 'pass_word'));
         $currentData = Utilities::getCurrentDate();
+        $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'user_number'));
 
+
+        if ($count != 11){
+            return Utilities::response(false, "Mobile number must have 11 digits!", "");
+        }
         if(empty($newpass && $confirmpass && $change_password && $count)){
-            $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $currentData, $user_ID]);
+            $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_number = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $user_number, $currentData, $user_ID]);
     
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         }else{
@@ -744,7 +752,7 @@ class Process
             }
             if ($newpass == $confirmpass) {
                 if (!empty($check)){
-                    $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_password = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $change_password, $currentData, $user_ID]);
+                    $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_password = ?, user_number = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $change_password, $user_number, $currentData, $user_ID]);
         
                     return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
                 }else{
@@ -871,19 +879,25 @@ class Process
 
     public static function checkContractDate()
     {
-        $updated = strtotime(Utilities::fetchDataFromArray($_GET, 'updated'));
+        
+        $updated = Utilities::fetchDataFromArray($_GET, 'updated');
+        $date_updated_formatDate = Utilities::formatDate($updated, 'Y-m-d');
+        $date_current_formatDate = Utilities::formatDate(Utilities::getCurrentDate(), 'Y-m-d');
+        $date_updated = strtotime($updated);
         $currentdate = strtotime(Utilities::getCurrentDate());
 
-        if($updated == false){
+        if($date_updated_formatDate == $date_current_formatDate){
+            return Utilities::response(true, null, null);
+        }
+        if($date_updated == false){
             return Utilities::response(false, "Contract is not yet created. To continue, you must first create a contract.", "");
         }
-        if ($currentdate > $updated){
+        if ($currentdate > $date_updated){
             return Utilities::response(false, "The agreement has already begun. To continue, you must update the contract.", "");
         }
         else{
             return Utilities::response(true, null, null);
         }
 
- 
     }
 }
