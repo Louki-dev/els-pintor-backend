@@ -554,12 +554,10 @@ class Process
         $currentData = Utilities::getCurrentDate();
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'customer_mobile_number'));
 
-        
         if ($count < 11){
             return Utilities::response(false, "Mobile number must have 11 digits!", "");
         }
 
-        
         $output = (new Database())->processQuery("INSERT INTO customer (customer_first_name, customer_last_name, customer_mobile_number, customer_email, customer_address, customer_inquiry_details, customer_created_at) VALUES (?,?,?,?,?,?,?)", [$cFname, $cLname, $cMn, $cEmail, $cAddress, $cInq, $currentData]);
 
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
@@ -649,7 +647,7 @@ class Process
         $serv_price = Utilities::fetchRequiredDataFromArray($_POST, 'servicePrice');
         $serv_status = Utilities::fetchDataFromArray($_POST, 'serviceStatus');
         $serv_description = Utilities::fetchRequiredDataFromArray($_POST, 'serviceDescription');
-        $serv_symbol = Utilities::fetchRequiredDataFromArray($_POST, 'serviceSymbol');
+        $serv_symbol = Utilities::fetchDataFromArray($_POST, 'serviceSymbol');
         $currentData = Utilities::getCurrentDate();
 
         $output = (new Database())->processQuery("UPDATE services SET service_title = ?, service_description = ?, service_price = ?, service_status = ?, service_symbol = ?, service_updated_at = ? WHERE service_id = ?", [$serv_name, $serv_description, $serv_price, $serv_status, $serv_symbol, $currentData, $serv_id]);
