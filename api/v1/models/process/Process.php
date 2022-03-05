@@ -1,4 +1,5 @@
 <?php
+
 namespace api\v1\models\process;
 
 use api\v1\models\globe\GlobeLabs;
@@ -9,7 +10,7 @@ use DateTime;
 
 class Process
 {
-    
+
     public static function statistics()
     {
         $customers = (new Database())->processQuery("SELECT count(*) as `count`, customer_status FROM customer GROUP BY customer_status", []);
@@ -17,7 +18,7 @@ class Process
         // $todos = (new Database())->processQuery("SELECT count(*) as `count`, todo_status FROM todo GROUP BY todo_status", []);
         $todos = (new Database())->processQuery("SELECT count(*) as `count`, customer_status FROM customer GROUP BY customer_status", []);
 
-        
+
         return Utilities::response(true, null, [
             "customer" => self::processStatuses($customers, 'customer_status'),
             "employee" => self::processStatuses($employees, 'emp_status'),
@@ -32,9 +33,8 @@ class Process
         $status = [];
 
         foreach ($data as $row) {
-            $status[(string)$columnStatus.'_'.$row[$columnStatus]] = $row['count'];
-            $status[(string)$columnStatus.'__'.$row[$columnStatus]] = $row['count'];
-
+            $status[(string)$columnStatus . '_' . $row[$columnStatus]] = $row['count'];
+            $status[(string)$columnStatus . '__' . $row[$columnStatus]] = $row['count'];
         }
 
         return $status;
@@ -44,14 +44,14 @@ class Process
     {
         $search = Utilities::fetchDataFromArray($_GET, 'search');
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             $customers = (new Database())->processQuery("SELECT * FROM customer ORDER BY customer_updated_at DESC, customer_created_at DESC", []);
             $output = [];
-        }else {
+        } else {
             $search = "%{$search}%";
             $customers = (new Database())->processQuery("SELECT * FROM customer WHERE customer_last_name like ? or customer_first_name like ? ORDER BY customer_updated_at DESC, customer_created_at DESC", [$search, $search]);
         }
-        
+
         foreach ($customers as $customer) {
             $output[$customer['customer_status']][] = $customer;
         }
@@ -74,7 +74,7 @@ class Process
         // $assignEmp = Utilities::fetchDataFromArray($_POST, 'assignEmp'); 
 
         $currentData = Utilities::getCurrentDate();
-        
+
         $customer = (new Database())->processQuery("UPDATE customer SET customer_status = ?, customer_updated_at = ? WHERE customer_id = ?", [$status, $currentData, $customerId]);
         // $employee = (new Database())->processQuery("UPDATE employee SET emp_work_status = ? WHERE emp_id = ?", [1, $assignEmp]);
         return Utilities::response(((!empty($customer['response']) && $customer['response'] == Defaults::SUCCESS) ? true : false), null, null);
@@ -84,9 +84,9 @@ class Process
     {
         $customerId = Utilities::fetchRequiredDataFromArray($_POST, 'customer_id');
         $status = Utilities::fetchRequiredDataFromArray($_POST, 'status');
-        $assignEmp = Utilities::fetchDataFromArray($_POST, 'assignEmp'); 
+        $assignEmp = Utilities::fetchDataFromArray($_POST, 'assignEmp');
         $currentData = Utilities::getCurrentDate();
-        
+
         $customer = (new Database())->processQuery("UPDATE customer SET customer_status = ?, customer_updated_at = ? WHERE customer_id = ?", [$status, $currentData, $customerId]);
         $employee = (new Database())->processQuery("UPDATE employee SET emp_work_status = ? WHERE emp_id = ?", [0, $assignEmp]);
         return Utilities::response(((!empty($customer['response']) && $customer['response'] == Defaults::SUCCESS) ? true : false), null, null);
@@ -111,11 +111,11 @@ class Process
 
         $checkCustomer = (new Database())->processQuery("SELECT * from `customer` WHERE customer_id = ?", [$customerId]);
 
-        if (!empty($checkCustomer)) { 
+        if (!empty($checkCustomer)) {
             $customer = (new Database())->processQuery("UPDATE `customer` SET  customer_status = ? WHERE customer_id = ?", [3, $customerId]);
-            
+
             if ((!empty($customer['response']) && $customer['response'] == Defaults::SUCCESS)) {
-                foreach($checkCustomer as $assign){
+                foreach ($checkCustomer as $assign) {
                     $asgn = $assign['customer_employee'];
                     (new Database())->processQuery("UPDATE `employee` SET emp_work_status = ?  WHERE emp_id = ?", [0, $asgn]);
                 }
@@ -136,7 +136,7 @@ class Process
         $customerId = Utilities::fetchRequiredDataFromArray($_POST, 'customer_id');
         $output = [];
 
-        $params = "(".str_repeat('?,', count($numbers) - 1).'?)';       
+        $params = "(" . str_repeat('?,', count($numbers) - 1) . '?)';
         $checkEmployee = (new Database())->processQuery("SELECT * FROM `employee` INNER JOIN  `opt_in` on `opt_in_mobile_number` = `emp_mobile_number` WHERE `emp_status` = 1 and `opt_in_mobile_number` in $params", $numbers);
         $checkEmployee2 = (new Database())->processQuery("SELECT * FROM `employee` WHERE `emp_status` = 1 and `emp_mobile_number` in $params", $numbers);
 
@@ -144,9 +144,9 @@ class Process
             $insertMessage = (new Database())->processQuery("INSERT INTO `message` (message_content, message_created_at, message_is_sent) VALUES (?,?,?)", [$message, $currentData, 1]);
 
             if ((!empty($insertMessage['response']) && $insertMessage['response'] == Defaults::SUCCESS)) {
-        
+
                 foreach ($checkEmployee as $employee) {
-                    
+
                     $mn = $employee['opt_in_mobile_number'];
                     $tkn = $employee['opt_in_token'];
 
@@ -158,15 +158,14 @@ class Process
 
         if (!empty($checkEmployee2)) {
             foreach ($checkEmployee2 as $employee2) {
-                $emp2 = $employee2['emp_id'];   
-                $mn2 = $employee2['emp_mobile_number'];  
+                $emp2 = $employee2['emp_id'];
+                $mn2 = $employee2['emp_mobile_number'];
                 (new Database())->processQuery("UPDATE `employee` SET emp_work_status = ? WHERE emp_mobile_number = ? ", [1, $mn2]);
-                (new Database())->processQuery("UPDATE `customer` SET customer_employee = ? WHERE customer_id = ? ", [$emp2, $customerId]);     
+                (new Database())->processQuery("UPDATE `customer` SET customer_employee = ? WHERE customer_id = ? ", [$emp2, $customerId]);
             }
         }
 
         return Utilities::response(true, null,  $output);
-
     }
     // ============================================================
 
@@ -176,17 +175,17 @@ class Process
         // $offset = is_null(Utilities::fetchDataFromArray($_GET, 'offset')) ? 0 : (int) Utilities::fetchDataFromArray($_GET, 'offset') ;
         // $limit =   is_null(Utilities::fetchDataFromArray($_GET, 'limit')) ? 10 : (int) Utilities::fetchDataFromArray($_GET, 'limit') ;
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             $total = (new Database())->processQuery("SELECT count(*) as `count` FROM employee  ORDER BY emp_last_name ASC", []);
             $employees = (new Database())->processQuery("SELECT * FROM employee WHERE emp_status = ? OR emp_status = ? ORDER BY  emp_last_name ASC", [0, 1]);
-        }else {
+        } else {
             $search = "%{$search}%";
 
             $total = (new Database())->processQuery("SELECT count(*) as `count` FROM employee WHERE emp_last_name like ? or emp_first_name like ? ORDER BY  emp_last_name ASC", [$search, $search]);
 
             $employees = (new Database())->processQuery("SELECT * FROM employee WHERE emp_last_name like ? or emp_first_name like ?  ORDER BY  emp_last_name ASC", [$search, $search]);
         }
-        
+
         return Utilities::response(true, null, ["employees" => $employees, "count" => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0]);
     }
 
@@ -197,41 +196,40 @@ class Process
         // $offset = is_null(Utilities::fetchDataFromArray($_GET, 'offset')) ? 0 : (int) Utilities::fetchDataFromArray($_GET, 'offset') ;
         // $limit =   is_null(Utilities::fetchDataFromArray($_GET, 'limit')) ? 10 : (int) Utilities::fetchDataFromArray($_GET, 'limit') ;
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
 
             $total = (new Database())->processQuery("SELECT count(*) as `count` FROM `customer` WHERE customer_employee = ?", [$empId]);
             $customers = (new Database())->processQuery("SELECT * FROM `customer` WHERE customer_employee = ? ORDER BY customer_updated_at DESC", [$empId]);
-        }else {
+        } else {
             $search = "%{$search}%";
             $total = (new Database())->processQuery("SELECT count(*) as `count` FROM `customer` WHERE (customer_last_name like ? or customer_first_name like ?) and customer_employee = ?", [$search, $search, $empId]);
             $customers = (new Database())->processQuery("SELECT * FROM `customer` WHERE (customer_last_name like ? or customer_first_name like ?) and customer_employee = ?  ORDER BY  customer_last_name ASC", [$search, $search, $empId]);
         }
-        
-        return Utilities::response(true, null, ["customers" => $customers, "count" => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0]);
 
+        return Utilities::response(true, null, ["customers" => $customers, "count" => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0]);
     }
 
-    public static function getAssignEmployee(){
+    public static function getAssignEmployee()
+    {
 
         $empId = Utilities::fetchDataFromArray($_GET, 'empId');
 
         $employee = (new Database())->processQuery("SELECT * FROM `employee` WHERE emp_id = ? ", [$empId]);
-        
-        return Utilities::response(true, null, ["employee" => $employee, "count" => count($employee)]);
 
+        return Utilities::response(true, null, ["employee" => $employee, "count" => count($employee)]);
     }
 
     public static function getActiveEmployeeListDashboard()
     {
         $employees = (new Database())->processQuery("SELECT * FROM employee  WHERE emp_status = ? and emp_work_status = ? ORDER BY emp_last_name ASC", [1, 0]);
-        
+
         return Utilities::response(true, null, ["employees" => $employees, "count" => count($employees)]);
     }
 
     public static function getActiveEmployeeList()
     {
         $employees = (new Database())->processQuery("SELECT * FROM employee  WHERE emp_status = ? ORDER BY emp_last_name ASC", [1]);
-        
+
         return Utilities::response(true, null, ["employees" => $employees, "count" => count($employees)]);
     }
 
@@ -241,13 +239,13 @@ class Process
         $fname = Utilities::fetchRequiredDataFromArray($_POST, 'fname');
         $lname = Utilities::fetchRequiredDataFromArray($_POST, 'lname');
         $email = strtolower(trim(Utilities::fetchRequiredDataFromArray($_POST, 'email')));
-        $mobile = substr(preg_replace( '/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'mobile')), -10, 10);
+        $mobile = substr(preg_replace('/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'mobile')), -10, 10);
         $employees = (new Database())->processQuery("SELECT * FROM employee WHERE emp_mobile_number = ? OR emp_email = ?", [$mobile, $email]);
 
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'mobile'));
         $currentData = Utilities::getCurrentDate();
 
-        if ($count < 11){
+        if ($count < 11) {
             return Utilities::response(false, ["error" => "Mobile number must have 11 digits!"], "");
         }
         // if (count($employees) > 0) {
@@ -257,12 +255,12 @@ class Process
         // $output = (new Database())->processQuery("INSERT INTO employee (emp_first_name, emp_last_name, emp_mobile_number, emp_email, emp_created_at) VALUES (?,?,?,?,now())", [$fname, $lname, $mobile, $email]);
 
         // return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-        
+
         if (empty($employees)) {
-            $output = (new Database())->processQuery("INSERT INTO employee (emp_first_name, emp_last_name, emp_mobile_number, emp_email, emp_created_at, emp_work_status) VALUES (?,?,?,?,?,?)", [$fname, $lname, $mobile, $email, $currentData,4]);
+            $output = (new Database())->processQuery("INSERT INTO employee (emp_first_name, emp_last_name, emp_mobile_number, emp_email, emp_created_at, emp_work_status) VALUES (?,?,?,?,?,?)", [$fname, $lname, $mobile, $email, $currentData, 4]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-        }else{
+        } else {
             return Utilities::response(false, ["error" => "Account already exist. Unable to complete process."], null);
         }
     }
@@ -273,7 +271,7 @@ class Process
         $fname = Utilities::fetchRequiredDataFromArray($_POST, 'fname');
         $lname = Utilities::fetchRequiredDataFromArray($_POST, 'lname');
         $email = strtolower(trim(Utilities::fetchRequiredDataFromArray($_POST, 'email')));
-        $mobile = substr(preg_replace( '/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'mobile')), -10, 10);
+        $mobile = substr(preg_replace('/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'mobile')), -10, 10);
         $employees = (new Database())->processQuery("SELECT * FROM employee WHERE (emp_mobile_number = ? OR emp_email = ?) AND emp_id = ? AND emp_status = ?", [$mobile, $email, $empId, 0]);
         $status_3 = (new Database())->processQuery("SELECT * FROM employee WHERE emp_id = ? and emp_status = ?", [$empId, 3]);
         $check = (new Database())->processQuery("SELECT * FROM employee WHERE emp_mobile_number = ? OR emp_email = ?", [$mobile, $email]);
@@ -281,7 +279,7 @@ class Process
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'mobile'));
 
 
-        if ($count != 11){
+        if ($count != 11) {
             return Utilities::response(false, ["error" => "Mobile number must have 11 digits!"], "");
         }
         if (!empty($status_3)) {
@@ -290,13 +288,12 @@ class Process
         if (empty($employees)) {
             return Utilities::response(false, ["error" => "E-mail/Mobile Number already in use or Employee is already Active. Unable to complete process."], null);
         }
-        
-        if ($check == $employees){
+
+        if ($check == $employees) {
             $output = (new Database())->processQuery("UPDATE employee SET emp_first_name = ?, emp_last_name = ?, emp_mobile_number = ?, emp_email = ?, emp_updated_at = ? WHERE emp_id = ? and emp_status = ?", [$fname, $lname, $mobile, $email, $currentData, $empId, 0]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-            
-        }else{
+        } else {
             return Utilities::response(false, ["error" => "E-mail/Mobile Number already in use."], null);
         }
 
@@ -329,7 +326,7 @@ class Process
             // $output = (new Database())->processQuery("DELETE FROM employee WHERE emp_id = ?", [$empId]);
             // $deleteMessage = (new Database())->processQuery("DELETE FROM sent_message WHERE sent_message_mobile = ?", [$employee[0]['emp_mobile_number']]);
             $output = (new Database())->processQuery("UPDATE employee SET emp_status = ? WHERE emp_id = ?", [3, $empId]);
-            
+
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         } else {
             return Utilities::response(false, "Cannot find the employee.", "");
@@ -341,56 +338,53 @@ class Process
         $empId = Utilities::fetchRequiredDataFromArray($_POST, 'emp_id');
         $employee = (new Database())->processQuery("SELECT emp_mobile_number FROM employee WHERE emp_id = ? and emp_status = 3", [$empId]);
 
-        if (!empty($employee)) {   
-            return Utilities::response(false, ["error" => "This employee was already removed."], "");    
-        }else{
+        if (!empty($employee)) {
+            return Utilities::response(false, ["error" => "This employee was already removed."], "");
+        } else {
             return Utilities::response(true, null, $employee);
         }
-        
     }
-    
+
     // ============================================================
 
     public static function getTodoList()
     {
         $search = Utilities::fetchDataFromArray($_GET, 'search');
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             // $todos = (new Database())->processQuery("SELECT * FROM todo ORDER BY todo_deadline ASC, todo_updated_at DESC", []);
             $todos = (new Database())->processQuery("SELECT * FROM customer WHERE customer_status = ? ORDER BY customer_due_date ASC", [1]);
 
             $output = [];
-        }else {
+        } else {
             $search = "%{$search}%";
             // $todos = (new Database())->processQuery("SELECT * FROM todo WHERE todo_title like ? ORDER BY todo_deadline ASC, todo_updated_at DESC", [$search]);
             $todos = (new Database())->processQuery("SELECT * FROM customer WHERE customer_last_name like ? OR customer_first_name like ? ORDER BY customer_due_date ASC, customer_completed_at DESC", [$search, $search]);
-
         }
         foreach ($todos as $todo) {
             $output[$todo['customer_status']][] = $todo;
         }
-        return Utilities::response(true, null,$output);
+        return Utilities::response(true, null, $output);
     }
-    
+
     public static function getCompletedList()
     {
         $search = Utilities::fetchDataFromArray($_GET, 'search');
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             // $todos = (new Database())->processQuery("SELECT * FROM todo ORDER BY todo_deadline ASC, todo_updated_at DESC", []);
             $todos = (new Database())->processQuery("SELECT * FROM customer WHERE customer_status = ? ORDER BY customer_completed_at DESC", [4]);
 
             $output = [];
-        }else {
+        } else {
             $search = "%{$search}%";
             // $todos = (new Database())->processQuery("SELECT * FROM todo WHERE todo_title like ? ORDER BY todo_deadline ASC, todo_updated_at DESC", [$search]);
             $todos = (new Database())->processQuery("SELECT * FROM customer WHERE customer_last_name like ? OR customer_first_name like ? ORDER BY customer_due_date ASC, customer_completed_at DESC", [$search, $search]);
-
         }
         foreach ($todos as $todo) {
             $output[$todo['customer_status']][] = $todo;
         }
-        return Utilities::response(true, null,$output);
+        return Utilities::response(true, null, $output);
     }
 
     public static function getTodoDetail()
@@ -411,15 +405,14 @@ class Process
         $deadline = Utilities::formatDate(Utilities::fetchRequiredDataFromArray($_POST, 'deadline'), 'Y-m-d H:i:s');
         $currentData = Utilities::getCurrentDate();
         $date = date('Y-m-d H:i:s');
-        
-        if ($deadline < $date){
+
+        if ($deadline < $date) {
             return Utilities::response(false, "Unable to process.", "");
-        }else{
+        } else {
             $output = (new Database())->processQuery("INSERT INTO todo (todo_title, todo_description, todo_address, todo_deadline, todo_created_at) VALUES (?,?,?,?,?)", [$title, $description, $address, $deadline, $currentData]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         }
-        
     }
 
     public static function updateTodo()
@@ -430,7 +423,7 @@ class Process
         // $todo = (new Database())->processQuery("UPDATE todo SET todo_status = ?, todo_updated_at = ? WHERE todo_id = ?", [$status, $currentData, $todoId]);
         $assign_emp = (new Database())->processQuery("SELECT * from `customer` WHERE customer_id = ?", [$todoId]);
 
-        foreach($assign_emp as $assign){
+        foreach ($assign_emp as $assign) {
             $asgn = $assign['customer_employee'];
         }
 
@@ -444,17 +437,19 @@ class Process
 
     public static function deleteTodo()
     {
-        $todoId = array_map(function($payload) {return (int) $payload;}, Utilities::fetchRequiredDataFromArrayAsArray($_POST, 'todo_id'));
-        $params = "(".str_repeat('?,', count($todoId) - 1).'?)';
+        $todoId = array_map(function ($payload) {
+            return (int) $payload;
+        }, Utilities::fetchRequiredDataFromArrayAsArray($_POST, 'todo_id'));
+        $params = "(" . str_repeat('?,', count($todoId) - 1) . '?)';
         // $todo = (new Database())->processQuery("DELETE FROM todo WHERE todo_id in $params", $todoId);
         // $todo = (new Database())->processQuery("UPDATE todo SET todo_status = 3 WHERE todo_id in $params", $todoId);
         $assign_emp = (new Database())->processQuery("SELECT * from `customer` WHERE customer_id in $params", $todoId);
 
-        if (!empty($assign_emp)) { 
+        if (!empty($assign_emp)) {
             $removeTodo = (new Database())->processQuery("UPDATE customer SET customer_status = 3 WHERE customer_id in $params", $todoId);
-            
+
             if ((!empty($removeTodo['response']) && $removeTodo['response'] == Defaults::SUCCESS)) {
-                foreach($assign_emp as $assign){
+                foreach ($assign_emp as $assign) {
                     $asgn = $assign['customer_employee'];
                     (new Database())->processQuery("UPDATE `employee` SET emp_work_status = ?  WHERE emp_id = ?", [0, $asgn]);
                 }
@@ -466,7 +461,7 @@ class Process
     }
 
 
-    
+
     // ============================================================
 
     public static function createMessage()
@@ -476,16 +471,16 @@ class Process
         $currentData = Utilities::getCurrentDate();
         $output = [];
 
-        $params = "(".str_repeat('?,', count($numbers) - 1).'?)';       
+        $params = "(" . str_repeat('?,', count($numbers) - 1) . '?)';
         $checkEmployee = (new Database())->processQuery("SELECT * FROM `employee` INNER JOIN  `opt_in` on `opt_in_mobile_number` = `emp_mobile_number` WHERE `emp_status` = 1 and `opt_in_mobile_number` in $params", $numbers);
 
         if (!empty($checkEmployee)) {
             $insertMessage = (new Database())->processQuery("INSERT INTO `message` (message_content, message_created_at, message_is_sent) VALUES (?,?,?)", [$message, $currentData, 1]);
 
             if ((!empty($insertMessage['response']) && $insertMessage['response'] == Defaults::SUCCESS)) {
-        
+
                 foreach ($checkEmployee as $employee) {
-                    
+
                     $mn = $employee['opt_in_mobile_number'];
                     $tkn = $employee['opt_in_token'];
 
@@ -496,29 +491,29 @@ class Process
         }
 
         return Utilities::response(true, null,  $output);
-
     }
 
     public static function getSentMessages()
     {
         $search = Utilities::fetchDataFromArray($_GET, 'search');
-        
-        if (is_null($search) || $search == ''){
+
+        if (is_null($search) || $search == '') {
             $messages = (new Database())->processQuery("SELECT * FROM sent_message LEFT JOIN employee ON emp_mobile_number = sent_message_mobile LEFT JOIN `message` ON message_id = sent_message_message WHERE sent_message_status = 0 ORDER BY sent_created_at DESC", []);
             $total = (new Database())->processQuery("SELECT COUNT(*) as `count` FROM sent_message LEFT JOIN employee ON emp_mobile_number = sent_message_mobile LEFT JOIN `message` ON message_id = sent_message_message ORDER BY sent_created_at DESC ", []);
-
-        }else {
+        } else {
             $search = "%{$search}%";
             $messages = (new Database())->processQuery("SELECT * FROM sent_message LEFT JOIN employee ON emp_mobile_number = sent_message_mobile LEFT JOIN `message` ON message_id = sent_message_message WHERE (emp_last_name like ? or emp_first_name like ?) and sent_message_status = 0 ORDER BY  sent_created_at DESC", [$search, $search]);
             $total = (new Database())->processQuery("SELECT COUNT(*) as `count` FROM sent_message LEFT JOIN employee ON emp_mobile_number = sent_message_mobile LEFT JOIN `message` ON message_id = sent_message_message WHERE emp_last_name like ? or emp_first_name like ? ORDER BY sent_created_at DESC ", [$search, $search]);
         }
-        return Utilities::response(true, null, ['count' => isset($total) && count(['count']) > 0? reset($total)['count'] : 0, 'messages' => $messages]);
+        return Utilities::response(true, null, ['count' => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0, 'messages' => $messages]);
     }
 
     public static function deleteSentMessage()
     {
-        $sentMessageId = array_map(function($payload) {return (int) $payload;}, Utilities::fetchRequiredDataFromArrayAsArray($_POST, 'sent_message_id'));
-        $params = "(".str_repeat('?,', count($sentMessageId) - 1).'?)';
+        $sentMessageId = array_map(function ($payload) {
+            return (int) $payload;
+        }, Utilities::fetchRequiredDataFromArrayAsArray($_POST, 'sent_message_id'));
+        $params = "(" . str_repeat('?,', count($sentMessageId) - 1) . '?)';
         // $sentMessage = (new Database())->processQuery("DELETE FROM sent_message WHERE sent_message_id in $params", $sentMessageId);
         $sentMessage = (new Database())->processQuery("UPDATE `sent_message` SET sent_message_status = 1 WHERE sent_message_id in $params", $sentMessageId);
         return Utilities::response(((!empty($sentMessage['response']) && $sentMessage['response'] == Defaults::SUCCESS) ? true : false), null, null);
@@ -550,11 +545,11 @@ class Process
         $cMn = Utilities::fetchRequiredDataFromArray($_POST, 'customer_mobile_number');
         $cEmail = strtolower(trim(Utilities::fetchRequiredDataFromArray($_POST, 'customer_email')));
         $cAddress = Utilities::fetchRequiredDataFromArray($_POST, 'customer_address');
-        $cInq = Utilities::fetchRequiredDataFromArray($_POST, 'customer_inquiry_details'); 
+        $cInq = Utilities::fetchRequiredDataFromArray($_POST, 'customer_inquiry_details');
         $currentData = Utilities::getCurrentDate();
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'customer_mobile_number'));
 
-        if ($count < 11){
+        if ($count < 11) {
             return Utilities::response(false, "Mobile number must have 11 digits!", "");
         }
 
@@ -573,8 +568,7 @@ class Process
         $serv_image = Utilities::imageDataUploader(Utilities::fetchRequiredDataFromArray($_POST, 'serv_image'));
         $serv_symbol = Utilities::fetchRequiredDataFromArray($_POST, 'serv_symbol');
         $currentData = Utilities::getCurrentDate();
-        if ($serv_image['status']===false)
-        {
+        if ($serv_image['status'] === false) {
             return Utilities::response(false, $serv_image['error'], null);
         }
 
@@ -591,13 +585,13 @@ class Process
 
         $total = (new Database())->processQuery("SELECT count(*) as `count` FROM services  ORDER BY service_created_at DESC", []);
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             $services = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ? or service_status = ? ORDER BY service_created_at DESC", [0, 1]);
-        }else {
+        } else {
             $search = "%{$search}%";
             $services = (new Database())->processQuery("SELECT * FROM services WHERE service_title like ? and service_status = ? or  service_status = ? ORDER BY service_created_at DESC", [$search, 0, 1]);
         }
-        return Utilities::response(true, null, ['services' => $services, 'count' => isset($total) && count(['count']) > 0? reset($total)['count'] : 0]);
+        return Utilities::response(true, null, ['services' => $services, 'count' => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0]);
     }
 
     public static function createProduct()
@@ -607,19 +601,18 @@ class Process
         $prod_quantity = Utilities::fetchDataFromArray($_POST, 'prod_quantity');
         $prod_image = Utilities::imageDataUploader(Utilities::fetchRequiredDataFromArray($_POST, 'prod_image'));
         $currentData = Utilities::getCurrentDate();
-        if ($prod_image['status']===false)
-        {
+        if ($prod_image['status'] === false) {
             return Utilities::response(false, $prod_image['error'], null);
-        }else{
-            if ($prod_quantity == 0){
+        } else {
+            if ($prod_quantity == 0) {
                 $status = 1;
-            }else{
+            } else {
                 $status = 0;
             }
             $output = (new Database())->processQuery("INSERT INTO products (product_name, product_price, product_quantity, product_status, product_image, product_created_at) VALUES (?,?,?,?,?,?)", [$prod_name, $prod_price, $prod_quantity, $status, $prod_image['content']['path'], $currentData]);
         }
 
-        return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);       
+        return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
 
 
@@ -631,13 +624,13 @@ class Process
 
         $total = (new Database())->processQuery("SELECT COUNT(*) as `count` FROM products  ORDER BY product_created_at DESC", []);
 
-        if (is_null($search) || $search == ''){
+        if (is_null($search) || $search == '') {
             $products = (new Database())->processQuery("SELECT * FROM products WHERE product_status = ? or product_status = ? ORDER BY product_created_at DESC", [0, 1]);
-        }else {
+        } else {
             $search = "%{$search}%";
-            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_name like ? and product_status = ? or product_status = ? ORDER BY product_created_at DESC", [$search, 0,1]);
+            $products = (new Database())->processQuery("SELECT * FROM products WHERE product_name like ? and product_status = ? or product_status = ? ORDER BY product_created_at DESC", [$search, 0, 1]);
         }
-        return Utilities::response(true, null, ["products" => $products, 'count' => isset($total) && count(['count']) > 0? reset($total)['count'] : 0]);
+        return Utilities::response(true, null, ["products" => $products, 'count' => isset($total) && count(['count']) > 0 ? reset($total)['count'] : 0]);
     }
 
     public static function updateService()
@@ -662,13 +655,13 @@ class Process
 
         if (!empty($service)) {
             // $output = (new Database())->processQuery("DELETE FROM services WHERE service_id = ?", [$serv_id]);
-            $output = (new Database())->processQuery("UPDATE services set service_status = ? WHERE service_id = ?", [2,$serv_id]);
+            $output = (new Database())->processQuery("UPDATE services set service_status = ? WHERE service_id = ?", [2, $serv_id]);
 
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
         } else {
             return Utilities::response(false, "Cannot find the service.", "");
         }
-    }   
+    }
     public static function serviceDetail()
     {
         $serviceId = Utilities::fetchRequiredDataFromArray($_GET, 'service_id');
@@ -676,7 +669,7 @@ class Process
 
         return Utilities::response(true, null, $services);
     }
- 
+
 
     public static function updateProduct()
     {
@@ -686,13 +679,13 @@ class Process
         $pQuant = Utilities::fetchDataFromArray($_POST, 'pQuant');
 
         $currentData = Utilities::getCurrentDate();
-        if ($pQuant == 0){
+        if ($pQuant == 0) {
             $status = 1;
-        }else{
+        } else {
             $status = 0;
         }
         $output = (new Database())->processQuery("UPDATE products SET product_name = ?, product_price = ?, product_status = ?, product_quantity = ?, product_updated_at = ? WHERE product_id = ?", [$pName, $pPrice, $status, $pQuant, $currentData, $pId]);
-        
+
         return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
     }
 
@@ -709,7 +702,7 @@ class Process
         } else {
             return Utilities::response(false, "Cannot find the product.", "");
         }
-    }  
+    }
 
     // ========================================
 
@@ -726,7 +719,7 @@ class Process
         $user_ID = Utilities::fetchRequiredDataFromArray($_POST, 'user_ID');
         $user_username = Utilities::fetchRequiredDataFromArray($_POST, 'user_username');
         $user_email = Utilities::fetchRequiredDataFromArray($_POST, 'user_email');
-        $user_number = substr(preg_replace( '/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'user_number')), -10, 10);
+        $user_number = substr(preg_replace('/[^0-9]/', '', Utilities::fetchRequiredDataFromArray($_POST, 'user_number')), -10, 10);
         $user = md5(Utilities::fetchRequiredDataFromArray($_POST, 'check_pass'));
         $newpass = Utilities::fetchDataFromArray($_POST, 'new_pass');
         $confirmpass = Utilities::fetchDataFromArray($_POST, 'pass_word');
@@ -737,30 +730,30 @@ class Process
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'user_number'));
 
 
-        if ($count != 11){
+        if ($count != 11) {
             return Utilities::response(false, "Mobile number must have 11 digits!", "");
         }
-        if(empty($newpass && $confirmpass && $change_password && $count)){
+        if (empty($newpass && $confirmpass && $change_password && $count)) {
             $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_number = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $user_number, $currentData, $user_ID]);
-    
+
             return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-        }else{
-            if ($count < 8){
+        } else {
+            if ($count < 8) {
                 return Utilities::response(false, "Password must be at least eight characters long.", "");
             }
             if ($newpass == $confirmpass) {
-                if (!empty($check)){
+                if (!empty($check)) {
                     $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_email = ?, user_password = ?, user_number = ?, user_updated_at = ? WHERE `user_id` = ?", [$user_username, $user_email, $change_password, $user_number, $currentData, $user_ID]);
-        
+
                     return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-                }else{
+                } else {
                     return Utilities::response(false, "Invalid current password.", "");
                 }
-            }else{
+            } else {
                 return Utilities::response(false, "New Password does not matched.", "");
             }
         }
-        
+
         // $output = (new Database())->processQuery("UPDATE users SET user_username = ?, user_updated_at = now() WHERE `user_id` = ?", [$user_username, $user_ID]);
 
         // return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
@@ -778,53 +771,50 @@ class Process
         $currentData = Utilities::getCurrentDate();
 
 
-        if ($count < 8){
+        if ($count < 8) {
             return Utilities::response(false, "Password must be at least eight characters long.", "");
         }
 
         if ($newpass == $confirmpass) {
-            if (!empty($check)){
+            if (!empty($check)) {
                 $output = (new Database())->processQuery("UPDATE users SET user_password = ?, user_updated_at = ? WHERE `user_id` = ?", [$change_password, $currentData, $pass_id]);
-    
+
                 return Utilities::response(((!empty($output['response']) && $output['response'] == Defaults::SUCCESS) ? true : false), null, null);
-            }else{
+            } else {
                 return Utilities::response(false, "Invalid current password.", "");
             }
-        }else{
+        } else {
             return Utilities::response(false, "Unable to complete process. Unmatched new password.", "");
         }
-        
-       
     }
 
     // =========================================
     public static function getServices()
     {
-        $gservices = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ? or service_status = ?", [0,1]);
+        $gservices = (new Database())->processQuery("SELECT * FROM services WHERE service_status = ? or service_status = ?", [0, 1]);
 
         return Utilities::response(true, null, $gservices);
     }
-    
+
     public static function getProducts()
     {
-        $pproducts = (new Database())->processQuery("SELECT * FROM products  WHERE product_status = ? or product_status = ?", [0,1]);
-        
+        $pproducts = (new Database())->processQuery("SELECT * FROM products  WHERE product_status = ? or product_status = ?", [0, 1]);
+
         return Utilities::response(true, null, $pproducts);
     }
 
-   
+
 
     public static function checkAdmin()
     {
         $user = md5(Utilities::fetchRequiredDataFromArray($_POST, 'check_pass'));
         $check_admin = (new Database())->processQuery("SELECT * FROM users WHERE user_password = ?", [$user]);
 
-        if (!empty($check_admin)){
+        if (!empty($check_admin)) {
             return Utilities::response(true, null, $check_admin);
-        }else{
+        } else {
             return Utilities::response(false, "Invalid password. Please try again.", "");
         }
-        
     }
 
     public static function checkPass()
@@ -835,67 +825,63 @@ class Process
         $newpass = Utilities::fetchRequiredDataFromArray($_POST, 'new_pass');
         $count = strlen(Utilities::fetchRequiredDataFromArray($_POST, 'pass_word'));
 
-        if ($count < 8){
-            return Utilities::response(false, ["error" =>"Password must be at least eight characters long."], "");
+        if ($count < 8) {
+            return Utilities::response(false, ["error" => "Password must be at least eight characters long."], "");
         }
 
         if ($newpass == $confirmpass) {
-            if (!empty($check_admin)){
+            if (!empty($check_admin)) {
                 return Utilities::response(true, null, $check_admin);
-            }else{
-                return Utilities::response(false, ["error" =>"Invalid current password. Please try again."], "");
+            } else {
+                return Utilities::response(false, ["error" => "Invalid current password. Please try again."], "");
             }
-        }else{
-            return Utilities::response(false, ["error" =>"Unable to complete process. Unmatched password."], "");
+        } else {
+            return Utilities::response(false, ["error" => "Unable to complete process. Unmatched password."], "");
         }
-      
     }
 
     public static function checkDate()
     {
         $started = Utilities::formatDate(Utilities::fetchRequiredDataFromArray($_GET, 'started'), 'Y-m-d H:i:s');
         $deadline = Utilities::formatDate(Utilities::fetchRequiredDataFromArray($_GET, 'deadline'), 'Y-m-d H:i:s');
-  
+
         $date = date('Y-m-d H:i:s');
-        
-        if ($deadline < $date){
+
+        if ($deadline < $date) {
             return Utilities::response(false, "Due date must be later than today!", "");
         }
-        if ($started < $date){
+        if ($started < $date) {
             return Utilities::response(false, "Start date must be later than today!", "");
         }
 
-        if ($started > $deadline){
+        if ($started > $deadline) {
             return Utilities::response(false, "Start date must not be later than due date!", "");
         }
 
-        
-        
+
+
         return Utilities::response(true, null, null);
- 
     }
 
     public static function checkContractDate()
     {
-        
+
         $updated = Utilities::fetchDataFromArray($_GET, 'updated');
         $date_updated_formatDate = Utilities::formatDate($updated, 'Y-m-d');
         $date_current_formatDate = Utilities::formatDate(Utilities::getCurrentDate(), 'Y-m-d');
         $date_updated = strtotime($updated);
         $currentdate = strtotime(Utilities::getCurrentDate());
 
-        if($date_updated_formatDate == $date_current_formatDate){
+        if ($date_updated_formatDate == $date_current_formatDate) {
             return Utilities::response(true, null, null);
         }
-        if($date_updated == false){
+        if ($date_updated == false) {
             return Utilities::response(false, "Contract is not yet created. To continue, you must first create a contract.", "");
         }
-        if ($currentdate > $date_updated){
+        if ($currentdate > $date_updated) {
             return Utilities::response(false, "The agreement has already begun. To continue, you must update the contract.", "");
-        }
-        else{
+        } else {
             return Utilities::response(true, null, null);
         }
-
     }
 }
